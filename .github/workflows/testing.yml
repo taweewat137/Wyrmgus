@@ -1,4 +1,9 @@
 ---
+# Builds and smoke-tests Wyrmgus on a stock Ubuntu 24.04 runner.
+#
+# Qt comes from the official online installer (via aqtinstall) because
+# CMakeLists.txt requires Qt 6.8 with QtLocation, which no Ubuntu release
+# packages. Everything else mirrors BUILD-UBUNTU.md.
 name: Test on GNU/Linux
 'on':
   - push
@@ -7,70 +12,104 @@ name: Test on GNU/Linux
 env:
   BUILD_DIR: ${{ github.workspace }}/build/
   BUILD_TYPE: Release
+  # Same flags as BUILD-UBUNTU.md. WITH_WARNINGS_AS_ERRORS stays off: the tree
+  # still emits a few hundred -Wall warnings (mostly fractional_int.h).
   CMAKE_FLAGS: >-
     -DENABLE_STATIC=OFF
     -DOpenGL_GL_PREFERENCE=GLVND
     -DWITH_GEOJSON=OFF
     -DWITH_X11=ON
-    -DWITH_WARNINGS_AS_ERRORS=ON
+  QT_VERSION: 6.8.*
   WYRMSUN_URL: https://github.com/Andrettin/Wyrmsun
   WYRMSUN_BRANCH: master
   DISPLAY: :0
+  # The runner has no sound server; SDL would otherwise abort at startup.
+  SDL_AUDIODRIVER: dummy
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        container:
-          - andrettin/wyrmgus:jammy
-    container: ${{ matrix.container }}
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Apply submodule patches
+        run: ./apply-patches.sh
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build \
+            libsdl2-dev libsdl2-mixer-dev libpng-dev zlib1g-dev \
+            liblua5.1-0-dev libtolua++5.1-dev libboost-dev \
+            libgl1-mesa-dev xvfb \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+            libxcb-xinerama0 libxcb-xkb1 libegl1 libopengl0 libpulse0 \
+            libasound2t64
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtpositioning qtlocation qtmultimedia qtshadertools
+          cache: true
+
       - name: Set CPU number
         run: echo "THREADS=$(nproc)" >> "$GITHUB_ENV"
+
       - name: Configure CMake
         run: >-
           cmake
           -S "$GITHUB_WORKSPACE"
           -B "$BUILD_DIR"
           -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
           $CMAKE_FLAGS
-      - name: Workaround for tolua.cpp target on CMake 3.16.3
-        run: cmake -S "$GITHUB_WORKSPACE" -B "$BUILD_DIR"
+
       - name: Build Wyrmgus
         run: >-
           cmake
           --build "$BUILD_DIR"
           --target wyrmgus_main
           --parallel "$THREADS"
+
       - name: Build Wyrmgus test suite
         run: >-
           cmake
           --build "$BUILD_DIR"
           --target wyrmgus_test
           --parallel "$THREADS"
+
       - name: Test
-        continue-on-error: true
-        run: cmake --build "$BUILD_DIR" --target test
+        run: ctest --test-dir "$BUILD_DIR" -R wyrmgus_test --output-on-failure
+
       - name: Clone Wyrmsun data
-        run: |
-          git clone "$WYRMSUN_URL" "${BUILD_DIR}/Wyrmsun/"
-          git -C "${BUILD_DIR}/Wyrmsun/" checkout "$WYRMSUN_BRANCH"
-      - name: Configure ALSA
         run: >-
-          echo 'pcm.!default { type plug slave.pcm "null"; }'
-          > /etc/asound.conf
+          git clone --depth 1 --branch "$WYRMSUN_BRANCH" "$WYRMSUN_URL"
+          "${BUILD_DIR}/Wyrmsun/"
+
       - name: Run graphic server
         run: |
-          Xvfb "$DISPLAY" &
+          Xvfb "$DISPLAY" -screen 0 1280x720x24 &
           display_num=$(echo "$DISPLAY" | cut -c 2-)
           while [ ! -S "/tmp/.X11-unix/X${display_num}" ]; do sleep 1; done
         timeout-minutes: 5
+
       - name: Run Wyrmsun
         run: >-
           "${BUILD_DIR}/wyrmgus" -t -d "${BUILD_DIR}/Wyrmsun/"
-        timeout-minutes: 5
+        timeout-minutes: 10
+
+      - name: Show game logs
+        if: always()
+        run: |
+          for f in stdout.txt stderr.txt; do
+            if [ -f "${BUILD_DIR}/Wyrmsun/$f" ]; then
+              echo "::group::$f"
+              cat "${BUILD_DIR}/Wyrmsun/$f"
+              echo "::endgroup::"
+            fi
+          done

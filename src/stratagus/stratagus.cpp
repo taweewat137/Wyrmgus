@@ -373,8 +373,8 @@ static void RedirectOutput()
 
 	makedir(path_str.c_str(), 0777);
 	
-	stdoutFile = path_str + "\\stdout.txt";
-	stderrFile = path_str + "\\stderr.txt";
+	stdoutFile = path::to_string(path / "stdout.txt");
+	stderrFile = path::to_string(path / "stderr.txt");
 
 	//if the log file is larger than the max log size, delete it before opening it for writing
 	if (std::filesystem::exists(stderrFile) && std::filesystem::file_size(stderrFile) > wyrmgus::log::max_size) {

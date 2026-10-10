@@ -39,6 +39,13 @@ add_compile_definitions(
 
 set(STRATAGUS_VERSION ${CMAKE_PROJECT_VERSION})
 
+# GCC 13+ promotes -Wchanges-meaning to an error by default; archimedes'
+# character_base has a member named after its enum type (gender), which trips
+# it. This has to be set before add_subdirectory(archimedes) so it applies there.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
+	add_compile_options(-Wno-changes-meaning)
+endif()
+
 add_subdirectory(archimedes)
 add_subdirectory(src/third_party/lua-5.1.5)
 add_subdirectory(src/third_party/zlib)

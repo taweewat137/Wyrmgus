@@ -38,6 +38,8 @@
 
 #ifdef USE_WIN32
 #include <winsock.h>
+#else
+#include <arpa/inet.h>
 #endif
 
 size_t serialize32(unsigned char *buf, uint32_t data)

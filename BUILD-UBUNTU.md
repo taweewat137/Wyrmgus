@@ -123,3 +123,15 @@ its own `stdout.txt`/`stderr.txt` into the data directory; a harmless
 `PulseAudioService: pa_context_connect() failed` from Qt Multimedia is expected
 there. The `-t` run loads about 3,400 `data/**/*.txt` files and about 500 Lua
 scripts from Wyrmsun before exiting.
+
+## 7. Continuous integration
+
+`.github/workflows/testing.yml` runs the same recipe on a stock
+`ubuntu-24.04` GitHub runner: it applies the submodule patches, installs the
+apt packages from section 1, installs Qt 6.8 (with `qtpositioning`,
+`qtlocation`, `qtmultimedia`, `qtshadertools`) through
+`jurplel/install-qt-action`, builds `wyrmgus_main` and `wyrmgus_test`, runs
+`ctest -R wyrmgus_test`, and finally runs the Wyrmsun smoke test under Xvfb
+with `SDL_AUDIODRIVER=dummy`. The game's `stdout.txt` and `stderr.txt` are
+printed at the end of every run. On a fork, GitHub Actions has to be enabled
+once from the repository's Actions tab before the workflow can run.

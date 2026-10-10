@@ -3,11 +3,16 @@ https://github.com/Andrettin/Wyrmgus/workflows/CMake/badge.svg?branch=master)
 
 # GitHub Actions for Wyrmgus
 
-Dirctory contains all necessary file for running CI processes on GitHub.
-[Dockerfile](Dockerfile) is used to maintain a GNU/Linux environment to build
-and test Wyrmgus. Pipeline fetching the docker image from
-https://hub.docker.com, so an updated image should be uploaded. To build an
-image run command in directory with [Dockerfile](Dockerfile):
+Directory contains all necessary files for running CI processes on GitHub.
+[workflows/testing.yml](workflows/testing.yml) builds and smoke-tests Wyrmgus
+on a stock `ubuntu-24.04` runner, installing Qt 6.8 (with QtLocation) through
+`jurplel/install-qt-action`; see [BUILD-UBUNTU.md](../BUILD-UBUNTU.md) for the
+same recipe run by hand.
+
+[Dockerfile-jammy](Dockerfile-jammy) is the old Qt5-based image used by the
+previous pipeline. It no longer satisfies `CMakeLists.txt` (Qt 6.8 required)
+and is kept only for reference. To build an image run command in directory
+with the Dockerfile:
 ```
 $ docker image build -f Dockerfile-name --tag 'image_name:tag' --compress --force-rm .
 ```

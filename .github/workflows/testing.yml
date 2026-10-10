@@ -54,7 +54,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: qtpositioning qtlocation qtmultimedia qtshadertools
+          modules: qtpositioning qtlocation qtmultimedia qtshadertools qtwebsockets
           cache: true
 
       - name: Set CPU number

@@ -129,7 +129,8 @@ scripts from Wyrmsun before exiting.
 `.github/workflows/testing.yml` runs the same recipe on a stock
 `ubuntu-24.04` GitHub runner: it applies the submodule patches, installs the
 apt packages from section 1, installs Qt 6.8 (with `qtpositioning`,
-`qtlocation`, `qtmultimedia`, `qtshadertools`) through
+`qtlocation`, `qtmultimedia`, `qtshadertools`, `qtwebsockets`, the last one for the
+bundled qcoro) through
 `jurplel/install-qt-action`, builds `wyrmgus_main` and `wyrmgus_test`, runs
 `ctest -R wyrmgus_test`, and finally runs the Wyrmsun smoke test under Xvfb
 with `SDL_AUDIODRIVER=dummy`. The game's `stdout.txt` and `stderr.txt` are
